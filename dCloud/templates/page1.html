@@ -1,0 +1,94 @@
+<!-- page1.html -->
+<div class="token-search">
+  <h2>Token Search</h2>
+  <input type="text" id="issuerInput" placeholder="Issuer Address" />
+  <input type="text" id="currencyInput" placeholder="Currency Code" />
+  <button id="searchTokenBtn">Search</button>
+  <div id="searchResults"></div>
+</div>
+
+<div class="trade-form">
+  <h2>Trade a Token</h2>
+  <input type="text" id="tradeIssuer" placeholder="Issuer" />
+  <input type="text" id="tradeCurrency" placeholder="Currency" />
+  <input type="text" id="tradeAmount" placeholder="Token Amount" />
+  <input type="text" id="tradePrice" placeholder="Price in XRP (drops)" />
+  <button id="createTradeBtn">Create Trade Offer</button>
+  <div id="tradeStatus"></div>
+</div>
+
+<!-- Chart container -->
+<div class="chart-container">
+  <h2>Price Chart</h2>
+  <!-- The Chart.js canvas -->
+  <canvas id="priceChart" width="600" height="300"></canvas>
+</div>
+
+<script>
+  // Make sure Chart.js is loaded in your main page (e.g., index.html)
+  // <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  let priceChartInstance = null;
+
+  /**
+   * updateChartData(issuer, currency)
+   * Fetch or generate historical price data for the given token, then render the chart.
+   * 
+   * Usage example (in your main JS):
+   *   document.getElementById("searchTokenBtn").addEventListener("click", async () => {
+   *     const issuerValue = issuerInput.value.trim();
+   *     const currencyValue = currencyInput.value.trim();
+   *     // ... any fetch logic you need ...
+   *     updateChartData(issuerValue, currencyValue);
+   *   });
+   */
+  async function updateChartData(issuer, currency) {
+    try {
+      // 1. Fetch or generate historical price data from your server or XRPL data source.
+      // Example placeholder:
+      // const res = await fetch(`/api/price_history?issuer=${issuer}&currency=${currency}`);
+      // const chartData = await res.json();
+
+      // Mock data for demonstration:
+      const chartData = {
+        labels: ["09:00", "10:00", "11:00", "12:00", "13:00"],
+        prices: [0.99, 1.01, 1.02, 1.05, 1.03]
+      };
+
+      // Access the canvas
+      const ctx = document.getElementById("priceChart").getContext("2d");
+
+      // If an existing chart instance exists, destroy it to avoid overlap
+      if (priceChartInstance) {
+        priceChartInstance.destroy();
+      }
+
+      // Create a new line chart
+      priceChartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: chartData.labels,
+          datasets: [
+            {
+              label: `${currency} Price`,
+              data: chartData.prices,
+              borderColor: "rgba(75,192,192,1)",
+              fill: false,
+              tension: 0.1
+            }
+          ]
+        },
+        options: {
+          responsive: false,
+          scales: {
+            y: {
+              beginAtZero: false
+            }
+          }
+        }
+      });
+    } catch (err) {
+      console.error("Error updating chart data:", err);
+    }
+  }
+</script>

@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>XRPL Trading Tool</title>
+
+  <!-- Load Chart.js (optional if you want to show charts) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Font Awesome (optional) -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+  />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f9f9f9;
+      margin: 0;
+    }
+
+    header {
+      background-color: #007bff;
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* NEW NAVBAR BUTTONS */
+    .nav-buttons {
+      display: flex;
+      gap: 10px;
+    }
+    .nav-button {
+      cursor: pointer;
+      color: white;
+      background: #0056b3;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .nav-button:hover {
+      background: #003d82;
+    }
+
+    /* The “Connect Wallet” items */
+    .nav-item {
+      margin-left: 15px;
+      color: white;
+      cursor: pointer;
+      position: relative;
+    }
+
+    /* Where pages load */
+    #content {
+      max-width: 1200px;
+      margin: auto;
+      padding: 20px;
+      /* We'll load page1.html or page2.html here */
+    }
+
+    /* Slide-out panel, modals, tokens, etc. – keep all original styling. */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      justify-content: center; align-items: center;
+    }
+    .modal-content {
+      background: white; padding: 20px; border-radius: 5px;
+      width: 80%; max-width: 500px;
+    }
+    .modal.show {
+      display: flex;
+    }
+    #tokensPanel {
+      position: fixed; top: 60px; right: -350px;
+      width: 300px; height: calc(100% - 60px);
+      background-color: #ffffff; border-left: 1px solid #ccc;
+      padding: 20px; box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+      transition: right 0.3s ease-in-out; z-index: 999;
+      overflow-y: auto;
+    }
+    #tokensPanel.show {
+      right: 0;
+    }
+    #tokensPanel h4 { margin: 0 0 8px 0; font-size: 14px; }
+    #tokensPanel hr { margin: 10px 0; }
+    #tokensPanel input[type="text"] {
+      width: 90%; margin-bottom: 10px;
+    }
+    .token-item {
+      cursor: pointer; padding: 5px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .token-item:last-child {
+      border-bottom: none;
+    }
+    .token-actions {
+      display: none; margin-top: 5px; font-size: 14px;
+    }
+    .token-actions span {
+      margin-right: 10px; cursor: pointer;
+      color: #007bff; text-decoration: underline;
+    }
+    #logoutBtn {
+      margin-top: 20px; background-color: #dc3545;
+      color: #fff; border: none; cursor: pointer;
+      padding: 6px 10px; border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div>
+      <h1 style="display: inline; margin-right: 20px;">XRPL Trading Tool</h1>
+      <!-- Our new nav buttons -->
+      <div class="nav-buttons" style="display:inline-block;">
+        <button id="btnPage1" class="nav-button">Main Tools</button>
+        <button id="btnPage2" class="nav-button">Another Example</button>
+      </div>
+    </div>
+    <div>
+      <!-- Single wallet button -->
+      <span id="walletStatus" class="nav-item">Connect Wallet</span>
+      <span id="walletBalance" class="nav-item"></span>
+    </div>
+  </header>
+
+  <!-- Slide-out tokens & logout panel -->
+  <div id="tokensPanel">
+    <h4>Add a Trustline:</h4>
+    <input type="text" id="addTrustIssuer" placeholder="Issuer Address" />
+    <input type="text" id="addTrustCurrency" placeholder="Currency Code" />
+    <input type="text" id="addTrustLimit" placeholder="Limit (e.g. 100000)" />
+    <button id="addTrustlineBtn">Add</button>
+
+    <hr/>
+    <h4>My Tokens:</h4>
+    <input type="text" id="tokenSearchInput" placeholder="Filter tokens..." />
+    <div id="tokenList"></div>
+
+    <hr/>
+    <button id="logoutBtn">Logout</button>
+  </div>
+
+  <!-- Modal for XUMM sign-in (iframe approach retained, but not actively used) -->
+  <div id="loginModal" class="modal">
+    <div class="modal-content">
+      <h3>Connect Wallet</h3>
+      <iframe
+        id="xummLoginIframe"
+        style="width:100%; height:300px;"
+        frameborder="0"
+      ></iframe>
+      <button id="closeModal">Close</button>
+    </div>
+  </div>
+
+  <!-- This is where we'll dynamically load page1.html or page2.html content -->
+  <div id="content"></div>
+
+  <script>
+    // ------------
+    // LOADING PAGES (via fetch)
+    // ------------
+    async function loadPage(file) {
+      try {
+        const response = await fetch(file);
+        const html = await response.text();
+        document.getElementById("content").innerHTML = html;
+      } catch (err) {
+        console.error("Error loading page:", err);
+        document.getElementById("content").innerHTML =
+          "<p style='color:red'>Failed to load content.</p>";
+      }
+    }
+
+    // On DOM load, we load the default "page1.html".
+    
+
+    document.getElementById("btnPage1").addEventListener("click", () => {
+    loadPage("/page1_html");
+    });
+    document.getElementById("btnPage2").addEventListener("click", () => {
+    loadPage("/page2_html");
+    });
+
+
+    // ------------
+    // REMAINING SCRIPT: wallet connect, tokens, trustlines, etc.
+    // (unchanged from your original code)
+    // ------------
+    let isConnected = false;  // track wallet connection
+    let walletAddress = null; // store the user's wallet address
+    let tokensCache = [];     // store the user's tokens (trustlines)
+
+    const walletStatus = document.getElementById("walletStatus");
+    const walletBalance = document.getElementById("walletBalance");
+    const loginModal = document.getElementById("loginModal");
+    const xummLoginIframe = document.getElementById("xummLoginIframe");
+    const closeModal = document.getElementById("closeModal");
+
+    const tokensPanel = document.getElementById("tokensPanel");
+    const addTrustIssuer = document.getElementById("addTrustIssuer");
+    const addTrustCurrency = document.getElementById("addTrustCurrency");
+    const addTrustLimit = document.getElementById("addTrustLimit");
+    const addTrustlineBtn = document.getElementById("addTrustlineBtn");
+    const tokenSearchInput = document.getElementById("tokenSearchInput");
+    const tokenList = document.getElementById("tokenList");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    // On page load, check localStorage to see if user was connected
+    document.addEventListener("DOMContentLoaded", async () => {
+      const storedConnected = localStorage.getItem("isConnected");
+      const storedAddress = localStorage.getItem("walletAddress");
+
+      if (storedConnected === "true" && storedAddress) {
+        try {
+          // Confirm with the server if the session is still valid
+          const statusResponse = await fetch("/xumm/status");
+          const status = await statusResponse.json();
+          if (status.connected && status.wallet_address === storedAddress) {
+            // Confirmed still connected
+            isConnected = true;
+            walletAddress = status.wallet_address;
+            walletStatus.textContent = `Wallet: ${walletAddress}`;
+
+            // Fetch balance
+            const balanceResponse = await fetch("/api/balance");
+            const balance = await balanceResponse.json();
+            if (!balance.error) {
+              walletBalance.textContent = `Balance: ${balance.balance} XRP`;
+            }
+            // Fetch tokens
+            await fetchTokens();
+          } else {
+            // Server says not connected, clear localStorage
+            localStorage.removeItem("isConnected");
+            localStorage.removeItem("walletAddress");
+          }
+        } catch (err) {
+          console.error("Error checking session on load:", err);
+        }
+      }
+    });
+
+    // Open modal and initiate wallet connection
+    walletStatus.addEventListener("click", async () => {
+      if (!isConnected) {
+        try {
+          const response = await fetch("/xumm/connect");
+          const { next } = await response.json();
+
+          // Instead of embedding Xumm in an iframe, open in a new tab:
+          // xummLoginIframe.src = next;
+          // loginModal.classList.add("show");
+          window.open(next, "_blank");
+
+          // Poll for wallet connection
+          const interval = setInterval(async () => {
+            const statusResponse = await fetch("/xumm/status");
+            const status = await statusResponse.json();
+
+            if (status.connected) {
+              clearInterval(interval);
+              isConnected = true;
+              walletAddress = status.wallet_address;
+
+              // Store in localStorage
+              localStorage.setItem("isConnected", "true");
+              localStorage.setItem("walletAddress", walletAddress);
+
+              walletStatus.textContent = `Wallet: ${walletAddress}`;
+              walletBalance.textContent = `Balance: Loading...`;
+
+              // (We won't close the modal here, because we never displayed it)
+              // loginModal.classList.remove("show");
+
+              // Fetch and update balance
+              const balanceResponse = await fetch("/api/balance");
+              const balance = await balanceResponse.json();
+              walletBalance.textContent = `Balance: ${balance.balance} XRP`;
+
+              // Fetch user tokens (trustlines)
+              await fetchTokens();
+            }
+          }, 3000); // Poll every 3 seconds
+        } catch (error) {
+          console.error("Error connecting wallet:", error);
+        }
+      } else {
+        // If wallet is already connected, toggle the slide-out panel
+        tokensPanel.classList.toggle("show");
+      }
+    });
+
+    // Close modal (unused now, but kept for reference)
+    closeModal.addEventListener("click", () => {
+      loginModal.classList.remove("show");
+    });
+
+    // Logout button inside the slide-out panel
+    logoutBtn.addEventListener("click", async () => {
+      try {
+        // Clears the session server-side (create /xumm/logout in Flask)
+        const res = await fetch("/xumm/logout", { method: "POST" });
+        const data = await res.json();
+        if (!data.error) {
+          // Clear local states
+          isConnected = false;
+          walletAddress = null;
+          localStorage.removeItem("isConnected");
+          localStorage.removeItem("walletAddress");
+
+          // Reset UI
+          tokensPanel.classList.remove("show");
+          walletStatus.textContent = "Connect Wallet";
+          walletBalance.textContent = "";
+
+          alert("Logged out successfully!");
+        } else {
+          alert("Error during logout: " + data.error);
+        }
+      } catch (err) {
+        console.error("Error logging out:", err);
+      }
+    });
+
+    
+
+    // Fetch tokens from your backend (/api/account_lines, for example)
+    async function fetchTokens() {
+      try {
+        const res = await fetch("/api/account_lines");
+        const data = await res.json();
+        if (data.tokens) {
+          tokensCache = data.tokens;
+          renderTokens(tokensCache, "");
+        }
+      } catch (err) {
+        console.error("Error fetching tokens:", err);
+      }
+    }
+
+    // Render tokens in the slide-out panel
+    function renderTokens(tokens, filterText) {
+      tokenList.innerHTML = "";
+      const filtered = tokens.filter(t => {
+        const currency = t.currency || "";
+        return currency.toLowerCase().includes(filterText.toLowerCase());
+      });
+
+      filtered.forEach((line) => {
+        const currency = line.currency;
+        const issuer = line.account || line.issuer;
+        const balance = line.balance;
+
+        const tokenDiv = document.createElement("div");
+        tokenDiv.className = "token-item";
+        tokenDiv.innerHTML = `
+          <strong>${currency}</strong> - Issuer: ${issuer}, Balance: ${balance}
+          <div class="token-actions">
+            <span data-action="swap">Swap</span>
+            <span data-action="amm">AMM</span>
+            <span data-action="send">Send</span>
+            <span data-action="receive">Receive</span>
+          </div>
+        `;
+
+        // Clicking on the token toggles the actions
+        tokenDiv.addEventListener("click", () => {
+          const actions = tokenDiv.querySelector(".token-actions");
+          actions.style.display = actions.style.display === "block" ? "none" : "block";
+        });
+
+        // Handle each action
+        const actions = tokenDiv.querySelectorAll("[data-action]");
+        actions.forEach(actionEl => {
+          actionEl.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const actionType = actionEl.getAttribute("data-action");
+            // Placeholder for your custom flows
+            alert(`Clicked ${actionType} for ${currency}`);
+          });
+        });
+
+        tokenList.appendChild(tokenDiv);
+      });
+    }
+
+    // Listen for search input
+    tokenSearchInput.addEventListener("input", (e) => {
+      const filterText = e.target.value;
+      renderTokens(tokensCache, filterText);
+    });
+
+    // Add trustline button
+    addTrustlineBtn.addEventListener("click", async () => {
+      const issuer = addTrustIssuer.value.trim();
+      const currency = addTrustCurrency.value.trim();
+      const limit = addTrustLimit.value.trim();
+
+      if (!issuer || !currency || !limit) {
+        alert("Please fill in issuer, currency, and limit.");
+        return;
+      }
+
+      try {
+        // You’ll need /api/add_trustline in your Flask app
+        const res = await fetch("/api/add_trustline", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ issuer, currency, limit })
+        });
+        const data = await res.json();
+        if (data.error) {
+          alert(`Error adding trustline: ${data.error}`);
+        } else {
+          alert("Trustline payload created. Please sign in XUMM.");
+          // Possibly open a Xumm link if returned from the server
+          if (data.next) {
+            window.open(data.next, "_blank");
+          }
+        }
+      } catch (err) {
+        console.error("Error adding trustline:", err);
+      }
+    });
+
+    // The token search & trade code is in the separate pages (page1.html) or can remain here.
+    // (We kept them in page1.html for display, but you can keep the JS logic here if you want.)
+  </script>
+</body>
+</html>
